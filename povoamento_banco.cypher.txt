@@ -1,0 +1,366 @@
+MATCH p=()-[]->() RETURN p;
+
+MATCH p=()-[]->() RETURN p;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MATCH p=(u:User)-[r:MEMBER_OF]->(c:Community {nome: 'Gamers Hardcore'})
+RETURN p;
+
+MATCH p=()-[:MEMBER_OF]->() RETURN p LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+// 1. GARANTE A COMUNIDADE DE ENTRETENIMENTO
+
+MERGE (c_gamer:Community {nome: 'Gamers Hardcore', categoria: 'Entretenimento'});
+
+
+// 2. COLOCA OS USUÁRIOS NA COMUNIDADE
+
+MATCH (c_gamer:Community {nome: 'Gamers Hardcore'})
+MATCH (giovanna:User {username: 'teixeiraerick'})
+MATCH (melissa:User {username: 'vianalucas'})
+MATCH (davi:User {username: 'diogo30'})
+
+MERGE (davi)-[rm1:MEMBER_OF]->(c_gamer)
+ON CREATE SET rm1.timestamp = datetime(), rm1.role = 'admin', rm1.joined_via = 'invite'
+
+MERGE (giovanna)-[rm2:MEMBER_OF]->(c_gamer)
+ON CREATE SET rm2.timestamp = datetime(), rm2.role = 'member', rm2.joined_via = 'search'
+
+MERGE (melissa)-[rm3:MEMBER_OF]->(c_gamer)
+ON CREATE SET rm3.timestamp = datetime(), rm3.role = 'moderator', rm3.joined_via = 'link';
+
+
+// 3. INTERAÇÕES NO POST DA GIOVANNA
+
+MATCH (giovanna:User {username: 'teixeiraerick'})
+MATCH (melissa:User {username: 'vianalucas'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (alice:User {username: 'anna-liz04'})
+MATCH (post_gio:Post {id: '0792431e-a5df-4fa2-be7f-2458f958a0a0'})
+
+MERGE (melissa)-[rc:COMMENTS_ON]->(post_gio)
+ON CREATE SET rc.timestamp = datetime(), rc.text = 'Que post incrível, concordo 100%!', rc.likes_received = 12
+
+MERGE (davi)-[rs:SHARES]->(post_gio)
+ON CREATE SET rs.timestamp = datetime(), rs.platform = 'Twitter', rs.caption = 'Olhem isso aqui pessoal!'
+
+MERGE (alice)-[rv:VIEWED]->(post_gio)
+ON CREATE SET rv.timestamp = datetime(), rv.duration_seconds = 45, rv.device = 'Mobile'
+
+MERGE (melissa)-[rt:TAGGED_IN]->(post_gio)
+ON CREATE SET rt.timestamp = datetime(), rt.context = 'Mencionada na foto';
+
+
+// 4. AÇÕES SISTÊMICAS (BLOQUEIOS E RECOMENDAÇÕES)
+
+MATCH (giovanna:User {username: 'teixeiraerick'})
+MATCH (melissa:User {username: 'vianalucas'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (alice:User {username: 'anna-liz04'})
+
+MERGE (alice)-[rmute:MUTED]->(davi)
+ON CREATE SET rmute.timestamp = datetime(), rmute.duration_days = 7, rmute.reason = 'Flood de conteúdo'
+
+MERGE (alice)-[rrec:RECOMMENDED]->(giovanna)
+ON CREATE SET rrec.timestamp = datetime(), rrec.algorithm = 'Mutual Connections', rrec.confidence_score = 0.89
+
+MERGE (davi)-[rsim:SIMILAR_TO]->(melissa)
+ON CREATE SET rsim.timestamp = datetime(), rsim.similarity_score = 0.92, rsim.factors = ['Community', 'Follows'];
+
+MERGE (c_gamer:Community {nome: 'Gamers Hardcore', categoria: 'Entretenimento'})
+WITH c_gamer
+MATCH (giovanna:User {username: 'teixeiraerick'})
+MATCH (melissa:User {username: 'vianalucas'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (alice:User {username: 'anna-liz04'})
+MATCH (post_gio:Post {id: '0792431e-a5df-4fa2-be7f-2458f958a0a0'});
+
+WITH c_gamer
+MATCH (giovanna:User {username: 'teixeiraerick'})
+MATCH (melissa:User {username: 'vianalucas'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (alice:User {username: 'anna-liz04'})
+MATCH (post_gio:Post {id: '0792431e-a5df-4fa2-be7f-2458f958a0a0'});
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MERGE (c_gamer:Community {nome: 'Gamers Hardcore', categoria: 'Entretenimento'});
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+// RECOMMENDED (Recomendação do Sistema)
+// Recomendando o Victor para o Carlos com base na comunidade em comum
+MATCH (v:User {username: '@victor'}), (c:User {username: '@carlos'})
+MERGE (v)-[rrec1:RECOMMENDED]->(c) 
+ON CREATE SET rrec1.timestamp = datetime(), rrec1.confidence_score = 0.95, rrec1.algorithm = 'Collaborative Filtering';
+
+// SIMILAR_TO (Similaridade entre usuários para o motor de recomendação)
+MATCH (v:User {username: '@victor'}), (amir:User {username: '@amir'})
+MERGE (v)-[rsim1:SIMILAR_TO]->(amir) 
+ON CREATE SET rsim1.timestamp = datetime(), rsim1.similarity_score = 0.88;
+
+// SEARCHED (Buscas/Pesquisas - Relação com Topics)
+MATCH (v:User {username: '@victor'}), (t1:Topic {nome: 'Concursos Públicos'})
+MERGE (v)-[rs1:SEARCHED]->(t1) 
+ON CREATE SET rs1.timestamp = datetime(), rs1.query_string = 'edital tce civil';
+
+MATCH p=()-[:MUTED]->() RETURN p LIMIT 25;
+
+MATCH p=()-[:BLOCKED]->() RETURN p LIMIT 25;
+
+MATCH p=()-[:VIEWED]->() RETURN p LIMIT 25;
+
+MATCH p=()-[:TAGGED_IN]->() RETURN p LIMIT 25;
+
+// TAGGED_IN (Marcado em um Post)
+MATCH (a:User {username: '@amir'}), (p1:Post {id: 'post_v1'})
+MERGE (a)-[rt1:TAGGED_IN]->(p1) 
+ON CREATE SET rt1.timestamp = datetime(), rt1.context = 'Mencionado nos comentários';
+
+// VIEWED (Visualização de Conteúdo)
+MATCH (ana:User {username: '@anamaria'}), (p1:Post {id: 'post_v1'})
+MERGE (ana)-[rv1:VIEWED]->(p1) 
+ON CREATE SET rv1.timestamp = datetime(), rv1.duration_seconds = 120;
+
+// BLOCKED (Bloqueio de Usuário)
+MATCH (c:User {username: '@carlos'}), (j:User {username: '@john'})
+MERGE (c)-[rb1:BLOCKED]->(j) 
+ON CREATE SET rb1.timestamp = datetime(), rb1.reason = 'Conteúdo Inapropriado';
+
+// MUTED (Silenciar Usuário)
+MATCH (ana:User {username: '@anamaria'}), (c:User {username: '@carlos'})
+MERGE (ana)-[rmu1:MUTED]->(c) 
+ON CREATE SET rmu1.timestamp = datetime(), rmu1.duration_days = 30;
+
+MATCH p=()-[:FRIEND_OF]->() RETURN p LIMIT 25;
+
+// FRIEND_OF (Amizade)
+MATCH (v:User {username: '@victor'}), (a:User {username: '@amir'})
+MERGE (v)-[rf1:FRIEND_OF]->(a) 
+ON CREATE SET rf1.timestamp = datetime(), rf1.channel = 'Organic Search';
+
+MATCH p=()-[:MEMBER_OF]->() RETURN p LIMIT 25;
+
+// MEMBER_OF (Membro de Comunidade)
+MATCH (v:User {username: '@victor'}), (c1:Community {nome: 'Engenharia Civil'})
+MERGE (v)-[rm1:MEMBER_OF]->(c1) 
+ON CREATE SET rm1.timestamp = datetime(), rm1.role = 'admin';
+
+MATCH (c:User {username: '@carlos'}), (c1:Community {nome: 'Engenharia Civil'})
+MERGE (c)-[rm2:MEMBER_OF]->(c1) 
+ON CREATE SET rm2.timestamp = datetime(), rm2.role = 'member';
+
+MATCH p=()-[:POSTED]->() RETURN p LIMIT 25;
+
+// POSTED (Criação de Conteúdo)
+MATCH (v:User {username: '@victor'}), (p1:Post {id: 'post_v1'})
+MERGE (v)-[r1:POSTED]->(p1) 
+ON CREATE SET r1.timestamp = datetime(), r1.device = 'iPhone 13', r1.location = 'Juazeiro do Norte';
+
+MATCH (j:User {username: '@john'}), (p2:Post {id: 'post_j1'})
+MERGE (j)-[r2:POSTED]->(p2) 
+ON CREATE SET r2.timestamp = datetime(), r2.device = 'PC Gamer';
+
+MATCH (n) RETURN n LIMIT 25;
+
+MATCH (n:User) RETURN n LIMIT 25;
+
+MATCH (n:Topic) RETURN n LIMIT 25;
+
+MATCH (n:Post) RETURN n LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n) 
+WHERE n.categoria IS NOT NULL
+RETURN DISTINCT "node" as entity, n.categoria AS categoria LIMIT 25
+UNION ALL 
+MATCH ()-[r]-() 
+WHERE r.categoria IS NOT NULL
+RETURN DISTINCT "relationship" AS entity, r.categoria AS categoria LIMIT 25;
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MATCH (n) RETURN n LIMIT 25;
+
+MATCH (n:Community) RETURN n LIMIT 25;
+
+MERGE (com1:Community {nome: 'Engenharia Civil', categoria: 'Educação'})
+MERGE (com2:Community {nome: 'Gamers Hardcore', categoria: 'Entretenimento'})
+
+MERGE (post1:Post {id: 'post_v1', content: 'Iniciando os estudos para o TCE-MA hoje!'})
+MERGE (post2:Post {id: 'post_j1', content: 'Alguém para jogar coop hoje à noite?'})
+MERGE (post3:Post {id: 'post_a1', content: 'Dicas valiosas de LangChain no link.'})
+
+MERGE (topic1:Topic {nome: 'Concursos Públicos'})
+MERGE (topic2:Topic {nome: 'Inteligência Artificial'});
+
+MATCH (n:User) RETURN n LIMIT 25;
+
+// Criação do Victor com a propriedade extra de idade
+MERGE (victor:User {username: '@victor'}) 
+ON CREATE SET victor.nome = 'Victor Gabriel', victor.idade = 23;
+
+CREATE SET victor.nome = 'Victor Gabriel', victor.idade = 23;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n) RETURN n LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH p=()-[:FRIEND_OF]->() RETURN p LIMIT 25;
+
+MATCH (n:User) RETURN n LIMIT 25;
+
+CREATE (u1:User {username: '@amir', nome: 'Amir'})
+CREATE (u2:User {username: '@carlos', nome: 'Carlos'})
+
+MATCH (a:User {username: '@amir'}), (b:User {username: '@carlos'})
+MERGE (a)-[:FRIEND_OF]->(b);
+
+MATCH (n) RETURN n LIMIT 25;
+
+MATCH (n:Empregado) RETURN n LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+:connect
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+// 1. Pescamos o empregado João (matrícula 2)
+MATCH (joao:Empregado {matr: 2})
+
+// 2. Criamos o nó do Dependente
+CREATE (filho:Dependente {nome: 'Enzo', matr_resp: 2, dt_nasc: '2015-05-10', idade: 11})
+
+// 3. Criamos a aresta (relacionamento) ligando o João ao filho
+CREATE (joao)-[:DEPENDENTE_DE]->(filho);
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+// 1. Pescamos o empregado João (matrícula 2)
+MATCH (joao:Empregado {matr: 2})
+
+// 2. Criamos o nó do Dependente
+CREATE (filho:Dependente {nome: 'Enzo', matr_resp: 2, dt_nasc: '2015-05-10', idade: 11})
+
+// 3. Criamos a aresta (relacionamento) ligando o João ao filho
+CREATE (joao)-[:DEPENDENTE_DE]->(filho);
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+// 1. Pescamos os empregados que já existem
+MATCH (ana:Empregado {matr: 1})
+MATCH (joao:Empregado {matr: 2})
+
+// 2. Criamos o Departamento e já puxamos as setas
+CREATE (engenharia:Departamento {Cod_Dep: 10, nome: 'Engenharia Civil', ender: 'Bloco A', fone: '555-0100'})
+CREATE (joao)-[:PERTENCE_A]->(engenharia)
+CREATE (ana)-[:GERENCIA]->(engenharia);
+
+MATCH p=()-[:SUPERVISOR]->() RETURN p LIMIT 25;
+
+MATCH (n:Empregado) RETURN n LIMIT 25;
+
+MATCH (subordinado:Empregado {matr: 2})
+MATCH (chefe:Empregado {matr: 1})
+CREATE (subordinado)-[:SUPERVISOR]->(chefe);
+
+MATCH (n) 
+WHERE n.name IS NOT NULL
+RETURN DISTINCT "node" as entity, n.name AS name LIMIT 25
+UNION ALL 
+MATCH ()-[r]-() 
+WHERE r.name IS NOT NULL
+RETURN DISTINCT "relationship" AS entity, r.name AS name LIMIT 25;
+
+MATCH (n) 
+WHERE n.matr IS NOT NULL
+RETURN DISTINCT "node" as entity, n.matr AS matr LIMIT 25
+UNION ALL 
+MATCH ()-[r]-() 
+WHERE r.matr IS NOT NULL
+RETURN DISTINCT "relationship" AS entity, r.matr AS matr LIMIT 25;
+
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n:Empregado) RETURN n LIMIT 25;
+
+CREATE (chefe:Empregado {matr: 1, nome: 'Chefe', salario: 15000.00}),
+       (peao:Empregado {matr: 2, nome: 'Estagiário', salario: 1000.00});
+
+MATCH (n)
+DETACH DELETE n;
+
+MATCH (n);
+
+MATCH (n)
+DETACH DELETE n;
+
+MATCH (n)
+WHERE elementId(n) = '4:9ca344e2-4802-4f8f-bc30-266867bfbd77:0'
+DETACH DELETE n;
+
+MATCH (n {name: 'Amir'})
+DETACH DELETE n;
+
+MATCH (n:Pessoa {name: "Amir"})
+DELETE n;
+
+MATCH (n:Pessoa {name: 'Amir'})
+DELETE n;
+
+MATCH (n)
+DETACH DELETE n;
+
+MATCH (n) DETACH DELETE;
+
+MATCH (n) DETACH DELETE n;
+
+MATCH (n) DETACH DELETE n;
+
+MATCH (n)
+DETACH DELETE Amir;
+
+MATCH (Amir)
+DETACH DELETE Amir;
+
+MATCH (n)
+DETACH DELETE n;
+
+MATCH (n:Pessoa) DELETE n;
+
+MATCH (n:Pessoa) DELETE r;
+
+RETURN (n) DETACH DELETE n;
+
+DETACH DELETE n;
+
+MATCH (n) RETURN n LIMIT 25;
+
+CREATE (n:Pessoa {name: "Amir"});
+
+CREATE (n:Pessoa {name: "Amir"});
+
+CREATE (n:Pessoa {name: "Amir"});
+
+CREATE (p:Pessoa {name: "Amir"});
+
+CREATE (p:Pessoa {name: $Amir});
+
+CREATE (n:label {name: $Amir});
+
+CREATE (n:Pessoa {name: $Amir});
