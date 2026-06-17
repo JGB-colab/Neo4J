@@ -35,7 +35,7 @@ if menu == "Home (Visão Geral)":
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
         with driver.session() as session:
             # Busca uma amostra de nós e relacionamentos para desenhar
-            resultado = session.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 100")
+            resultado = session.run("MATCH (n)-[r]->(m) RETURN n, r, m")
             
             nodes_set = set()
             nodes = []
@@ -268,7 +268,7 @@ elif menu == "Gerenciamento de Relacionamentos":
                     st.error(f"Erro na exclusão: {e}")
             else:
                 st.error("Preencha origem e destino!")
-                
+
 # ==========================================
 # TELA 4: MOTOR DE RECOMENDAÇÃO
 # ==========================================
@@ -298,7 +298,7 @@ elif menu == "Motor de Recomendação":
                 WHERE u <> sugerido AND NOT (u)-[:FOLLOWS]->(sugerido)
                 RETURN sugerido.nome AS SugestaoAmigo, sugerido.username AS Username, count(p) AS InteressesEmComum
                 ORDER BY InteressesEmComum DESC
-                LIMIT 5
+              
                 """
                 registos = run_query(query_amigos, {"username": usuario_alvo})
                 if registos:
@@ -315,7 +315,7 @@ elif menu == "Motor de Recomendação":
                 MATCH (u:User {username: $username})-[:FOLLOWS]->(amigo:User)-[:LIKES]->(p:Post)
                 WHERE NOT (u)-[:LIKES]->(p)
                 RETURN p.content AS PostRecomendado, amigo.nome AS QuemGostou
-                LIMIT 5
+               
                 """
                 registos = run_query(query_conteudo, {"username": usuario_alvo})
                 if registos:
@@ -333,7 +333,6 @@ elif menu == "Motor de Recomendação":
                 WHERE NOT (u)-[:MEMBER_OF]->(c)
                 RETURN c.nome AS ComunidadeSugerida, count(amigo) AS AmigosNaComunidade
                 ORDER BY AmigosNaComunidade DESC
-                LIMIT 5
                 """
                 registos = run_query(query_comunidades, {"username": usuario_alvo})
                 if registos:
