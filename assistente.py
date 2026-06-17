@@ -91,106 +91,184 @@ elif menu == "Gerenciamento de Usuários":
         st.code(f"CREATE (u:User {{nome: '{nome}', username: '{username}'}})", language="cypher")
 
 # ==========================================
-# TELA 3: GERENCIAMENTO DE RELACIONAMENTOS
+# TELA 3: GERENCIAMENTO DE RELACIONAMENTOS (CRUD COMPLETO)
 # ==========================================
 elif menu == "Gerenciamento de Relacionamentos":
-    st.header("Gerenciamento de Relacionamentos")
+    st.header("Central de Relacionamentos")
+    st.markdown("Pesquise, crie, edite ou delete conexões do ecossistema.")
 
+    # Função auxiliar para as listas (já existia)
     def obter_tabela_nos(label):
         if label == "User":
-            query = "MATCH (n:User) RETURN n.nome AS Nome, n.username AS Username LIMIT 50"
+            query = "MATCH (n:User) RETURN n.nome AS Nome, n.username AS Username"
         elif label == "Post":
-            query = "MATCH (n:Post) RETURN n.id AS ID, n.content AS Conteudo LIMIT 50"
+            query = "MATCH (n:Post) RETURN n.id AS ID, n.content AS Conteudo"
         elif label == "Community":
-            query = "MATCH (n:Community) RETURN n.nome AS Nome LIMIT 50"
+            query = "MATCH (n:Community) RETURN n.nome AS Nome"
         else:
-            query = f"MATCH (n:{label}) RETURN n.id AS ID, n.nome AS Nome LIMIT 50"
+            query = f"MATCH (n:{label}) RETURN n.id AS ID, n.nome AS Nome"
         try:
             return run_query(query)
         except Exception:
             return []
 
-    mapeamento_relacoes = {
-        "FOLLOWS": {"orig": "User", "dest": "User", "busca_orig": "username", "busca_dest": "username"},
-        "FRIEND_OF": {"orig": "User", "dest": "User", "busca_orig": "username", "busca_dest": "username"},
-        "LIKES": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "SHARES": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "COMMENTS_ON": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "POSTED": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "MEMBER_OF": {"orig": "User", "dest": "Community", "busca_orig": "username", "busca_dest": "nome"},
-        "TAGGED_IN": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "BLOCKED": {"orig": "User", "dest": "User", "busca_orig": "username", "busca_dest": "username"},
-        "MUTED": {"orig": "User", "dest": "User", "busca_orig": "username", "busca_dest": "username"},
-        "VIEWED": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "RECOMMENDED": {"orig": "User", "dest": "Post", "busca_orig": "username", "busca_dest": "id"},
-        "SIMILAR_TO": {"orig": "User", "dest": "User", "busca_orig": "username", "busca_dest": "username"}
-    }
-
-    lista_relacionamentos = list(mapeamento_relacoes.keys())
-    lista_labels = ["User", "Post", "Comment", "Community", "Topic", "Hashtag", "Event", "Device", "Location", "Media", "Advertisement"]
+    lista_relacionamentos = [
+        "FOLLOWS", "FRIEND_OF", "LIKES", "SHARES", "COMMENTS_ON", 
+        "POSTED", "MEMBER_OF", "TAGGED_IN", "BLOCKED", "MUTED", 
+        "VIEWED", "RECOMMENDED", "SIMILAR_TO"
+    ]
+    lista_labels = ["User", "Post", "Community", "Topic", "Hashtag", "Event", "Device", "Location", "Media", "Advertisement"]
     opcoes_busca = ["username", "id", "nome"]
 
-    tipo_relacao = st.selectbox("Qual o Tipo de Relacionamento?", lista_relacionamentos)
-    config = mapeamento_relacoes[tipo_relacao]
+    # Criação das 4 Abas de Operação
+    tab_search, tab_create, tab_rename, tab_delete = st.tabs([
+        "Pesquisar", "Criar", "Renomear", "Deletar"
+    ])
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("Nó de Origem")
-        idx_orig = lista_labels.index(config["orig"]) if config["orig"] in lista_labels else 0
-        idx_busca_orig = opcoes_busca.index(config["busca_orig"])
+    # ---------------------------------------------------------
+    # ABA 1: PESQUISAR RELACIONAMENTOS (O que você pediu de visualização)
+    # ---------------------------------------------------------
+    with tab_search:
+        st.subheader("Explorador de Conexões")
+        st.write("Busque um nó específico para ver com quem/o que ele está conectado.")
         
-        label_origem = st.selectbox("Tipo de Nó (Origem)", lista_labels, index=idx_orig)
-        chave_origem = st.selectbox("Buscar origem por:", opcoes_busca, index=idx_busca_orig, key="chave_orig")
-        
-        dados_origem = obter_tabela_nos(label_origem)
-        if dados_origem:
-            st.dataframe(dados_origem, use_container_width=True, height=150)
-        else:
-            st.caption(f"Nenhum {label_origem} encontrado.")
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            lbl_busca = st.selectbox("Buscar em qual tipo de Nó?", lista_labels, key="search_lbl")
+        with col_s2:
+            chave_busca = st.selectbox("Usando qual chave?", opcoes_busca, key="search_key")
             
-        valor_origem = st.text_input(f"Valor da Origem ({chave_origem}):")
+        valor_busca = st.text_input("Digite o valor (ex: @carlos, id do post, etc):", key="search_val")
+        
+        if st.button("Buscar Conexões"):
+            if valor_busca:
+                # Query que busca o nó central e traz as setas que SAEM e ENTRAM nele
+                q_search = f"""
+                MATCH (centro:{lbl_busca} {{{chave_busca}: $valor}})-[r]-(vizinho)
+                RETURN 
+                    type(r) AS Tipo_Relacionamento, 
+                    labels(vizinho)[0] AS Tipo_Vizinho, 
+                    COALESCE(vizinho.username, vizinho.nome, vizinho.id, 'Desconhecido') AS Vizinho
+                ORDER BY Tipo_Relacionamento
+                """
+                resultados_busca = run_query(q_search, {"valor": valor_busca})
+                
+                if resultados_busca:
+                    st.success(f"Encontramos {len(resultados_busca)} conexões para '{valor_busca}':")
+                    st.dataframe(resultados_busca, use_container_width=True)
+                else:
+                    st.warning(f"Nenhuma conexão encontrada para {lbl_busca} com {chave_busca} = '{valor_busca}'.")
+            else:
+                st.error("Digite um valor para buscar!")
 
-    with col2:
-        st.subheader("Nó de Destino")
-        idx_dest = lista_labels.index(config["dest"]) if config["dest"] in lista_labels else 0
-        idx_busca_dest = opcoes_busca.index(config["busca_dest"])
+    # ---------------------------------------------------------
+    # ABA 2: CRIAR RELACIONAMENTO (Seu código original melhorado)
+    # ---------------------------------------------------------
+    with tab_create:
+        st.subheader("Novo Relacionamento")
         
-        label_destino = st.selectbox("Tipo de Nó (Destino)", lista_labels, index=idx_dest)
-        chave_destino = st.selectbox("Buscar destino por:", opcoes_busca, index=idx_busca_dest, key="chave_dest")
+        tipo_relacao_c = st.selectbox("Qual o Tipo de Relacionamento a Criar?", lista_relacionamentos, key="create_rel")
         
-        dados_destino = obter_tabela_nos(label_destino)
-        if dados_destino:
-            st.dataframe(dados_destino, use_container_width=True, height=150)
-        else:
-            st.caption(f"Nenhum {label_destino} encontrado.")
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            st.markdown("**Origem**")
+            l_orig_c = st.selectbox("Nó Origem", lista_labels, index=0, key="c_l_orig")
+            k_orig_c = st.selectbox("Buscar por", opcoes_busca, index=0, key="c_k_orig")
+            v_orig_c = st.text_input("Valor da Origem:", key="c_v_orig")
             
-        valor_destino = st.text_input(f"Valor do Destino ({chave_destino}):")
+        with cc2:
+            st.markdown("**Destino**")
+            l_dest_c = st.selectbox("Nó Destino", lista_labels, index=0, key="c_l_dest")
+            k_dest_c = st.selectbox("Buscar por", opcoes_busca, index=0, key="c_k_dest")
+            v_dest_c = st.text_input("Valor do Destino:", key="c_v_dest")
 
-    if st.button("Criar Relacionamento"):
-        if valor_origem and valor_destino:
-            query_relacionamento = f"""
-            MATCH (a:{label_origem} {{{chave_origem}: $orig_val}})
-            MATCH (b:{label_destino} {{{chave_destino}: $dest_val}})
-            MERGE (a)-[r:{tipo_relacao}]->(b)
-            ON CREATE SET r.timestamp = datetime()
-            """
-            try:
-                with GraphDatabase.driver(URI, auth=AUTH) as driver:
-                    with driver.session() as session:
-                        resultado = session.run(query_relacionamento, orig_val=valor_origem, dest_val=valor_destino)
-                        res_summary = resultado.consume()
-                        
-                        if res_summary.counters.relationships_created > 0:
-                            st.success(f"✅ Sucesso! Relacionamento '{tipo_relacao}' criado.")
-                        else:
-                            st.warning("⚠️ Relacionamento não criado (já existia ou nós não encontrados).")
-                st.code(query_relacionamento.replace('$orig_val', f"'{valor_origem}'").replace('$dest_val', f"'{valor_destino}'"), language="cypher")
-            except Exception as e:
-                st.error(f"❌ Erro de execução: {e}")
-        else:
-            st.error("Preencha os valores de origem e destino!")
+        if st.button("Criar Relacionamento", type="primary"):
+            if v_orig_c and v_dest_c:
+                q_create = f"""
+                MATCH (a:{l_orig_c} {{{k_orig_c}: $orig_val}})
+                MATCH (b:{l_dest_c} {{{k_dest_c}: $dest_val}})
+                MERGE (a)-[r:{tipo_relacao_c}]->(b)
+                ON CREATE SET r.timestamp = datetime()
+                """
+                try:
+                    run_query(q_create, {"orig_val": v_orig_c, "dest_val": v_dest_c})
+                    st.success(f"Relacionamento '{tipo_relacao_c}' criado!")
+                    st.code(q_create.replace('$orig_val', f"'{v_orig_c}'").replace('$dest_val', f"'{v_dest_c}'"), language="cypher")
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+            else:
+                st.error("Preencha origem e destino!")
 
+    # ---------------------------------------------------------
+    # ABA 3: RENOMEAR/ALTERAR RELACIONAMENTO
+    # ---------------------------------------------------------
+    with tab_rename:
+        st.subheader("Renomear Tipo de Relacionamento")
+        st.info("No Neo4j, nós 'renomeamos' criando uma nova conexão idêntica e deletando a antiga.")
+        
+        cr1, cr2 = st.columns(2)
+        with cr1:
+            rel_antigo = st.selectbox("De (Relacionamento Atual):", lista_relacionamentos, index=0)
+            st.markdown("**Origem Atual**")
+            k_orig_r = st.selectbox("Chave Origem", opcoes_busca, key="r_k_orig")
+            v_orig_r = st.text_input("Valor Origem:", key="r_v_orig")
+            
+        with cr2:
+            rel_novo = st.selectbox("Para (Novo Relacionamento):", lista_relacionamentos, index=1)
+            st.markdown("**Destino Atual**")
+            k_dest_r = st.selectbox("Chave Destino", opcoes_busca, key="r_k_dest")
+            v_dest_r = st.text_input("Valor Destino:", key="r_v_dest")
+
+        if st.button("Executar Renomeação"):
+            if v_orig_r and v_dest_r:
+                # O Cypher faz a cópia das propriedades e deleta o velho numa tacada só
+                q_rename = f"""
+                MATCH (a {{{k_orig_r}: $orig}})-[r_old:{rel_antigo}]->(b {{{k_dest_r}: $dest}})
+                MERGE (a)-[r_new:{rel_novo}]->(b)
+                SET r_new = r_old
+                DELETE r_old
+                """
+                try:
+                    run_query(q_rename, {"orig": v_orig_r, "dest": v_dest_r})
+                    st.success(f"Sucesso! O relacionamento foi alterado de {rel_antigo} para {rel_novo}.")
+                    st.code(q_rename.replace('$orig', f"'{v_orig_r}'").replace('$dest', f"'{v_dest_r}'"), language="cypher")
+                except Exception as e:
+                    st.error(f"Erro: Verifique se o relacionamento {rel_antigo} realmente existe entre os dois.")
+            else:
+                st.error("Preencha origem e destino!")
+
+    # ---------------------------------------------------------
+    # ABA 4: DELETAR RELACIONAMENTO
+    # ---------------------------------------------------------
+    with tab_delete:
+        st.subheader("Deletar Relacionamento")
+        st.warning("Atenção: Essa ação é irreversível!")
+        
+        rel_del = st.selectbox("Qual relação deseja apagar?", lista_relacionamentos, key="del_rel")
+        
+        cd1, cd2 = st.columns(2)
+        with cd1:
+            k_orig_d = st.selectbox("Chave Origem", opcoes_busca, key="d_k_orig")
+            v_orig_d = st.text_input("Valor Origem:", key="d_v_orig")
+        with cd2:
+            k_dest_d = st.selectbox("Chave Destino", opcoes_busca, key="d_k_dest")
+            v_dest_d = st.text_input("Valor Destino:", key="d_v_dest")
+            
+        if st.button("Deletar Definitivamente"):
+            if v_orig_d and v_dest_d:
+                q_delete = f"""
+                MATCH (a {{{k_orig_d}: $orig}})-[r:{rel_del}]->(b {{{k_dest_d}: $dest}})
+                DELETE r
+                """
+                try:
+                    run_query(q_delete, {"orig": v_orig_d, "dest": v_dest_d})
+                    st.success(f"Relacionamento '{rel_del}' deletado com sucesso!")
+                    st.code(q_delete.replace('$orig', f"'{v_orig_d}'").replace('$dest', f"'{v_dest_d}'"), language="cypher")
+                except Exception as e:
+                    st.error(f"Erro na exclusão: {e}")
+            else:
+                st.error("Preencha origem e destino!")
+                
 # ==========================================
 # TELA 4: MOTOR DE RECOMENDAÇÃO
 # ==========================================
