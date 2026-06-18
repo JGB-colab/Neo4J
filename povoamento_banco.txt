@@ -1,3 +1,70 @@
+MATCH p=()-[]->() RETURN p LIMIT 25;
+
+MATCH (n) RETURN n LIMIT 25;
+
+// ==========================================
+// 1. RECUPERA OS NÓS QUE JÁ EXISTEM PARA CONECTAR
+// ==========================================
+MATCH (v:User {username: '@victor'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (p1:Post {id: 'post_v1'})
+MATCH (c_civil:Community {nome: 'Engenharia Civil'})
+MATCH (c_gamer:Community {nome: 'Gamers Hardcore'})
+
+// ==========================================
+// 2. CRIANDO AS HASHTAGS (Hashtag)
+// ==========================================
+MERGE (h1:Hashtag {nome: '#TCEMA'})
+MERGE (h2:Hashtag {nome: '#SimulacaoBaseadaEmEventos'})
+MERGE (h3:Hashtag {nome: '#EldenRing'})
+
+// Conectando o post do Victor às hashtags
+MERGE (p1)-[rt1:TAGGED_WITH]->(h1)
+ON CREATE SET rt1.timestamp = datetime()
+MERGE (p1)-[rt2:TAGGED_WITH]->(h2)
+ON CREATE SET rt2.timestamp = datetime()
+
+// ==========================================
+// 3. CRIANDO OS EVENTOS VIRTUAIS (Event)
+// ==========================================
+MERGE (evt1:Event {nome: 'Maratona de Questões TCE-MA', data: '2026-07-20', plataforma: 'YouTube'})
+MERGE (evt2:Event {nome: 'Torneio Elden Ring no Discord', data: '2026-06-30', plataforma: 'Discord'})
+
+// As comunidades sediando os eventos
+MERGE (c_civil)-[rh1:HOSTS]->(evt1)
+ON CREATE SET rh1.timestamp = datetime()
+MERGE (c_gamer)-[rh2:HOSTS]->(evt2)
+ON CREATE SET rh2.timestamp = datetime()
+
+// O Victor confirmando presença no evento
+MERGE (v)-[ra1:ATTENDS]->(evt1)
+ON CREATE SET ra1.timestamp = datetime(), ra1.status = 'Confirmed'
+
+// ==========================================
+// 4. CRIANDO OS NÓS DE COMENTÁRIO FÍSICOS (Comment)
+// ==========================================
+MERGE (cmt1:Comment {id: 'cmt_001', texto: 'Na questão sobre o presidente da Academia Maranhense de Letras em 2008, o gabarito (letra C) tem ambiguidade!'})
+MERGE (cmt2:Comment {id: 'cmt_002', texto: 'Criei mais de 200 planilhas de orçamento e isso ajudou muito nos estudos da base.'})
+
+// A arquitetura padrão: O Usuário POSTA o Comentário, e o Comentário PERTENCE a um Post
+MERGE (v)-[rp1:POSTED]->(cmt1)
+ON CREATE SET rp1.timestamp = datetime()
+
+MERGE (v)-[rp2:POSTED]->(cmt2)
+ON CREATE SET rp2.timestamp = datetime()
+
+MERGE (cmt1)-[ro1:ON_POST]->(p1)
+ON CREATE SET ro1.timestamp = datetime()
+
+MERGE (cmt2)-[ro2:ON_POST]->(p1)
+ON CREATE SET ro2.timestamp = datetime();
+
+MATCH (v:User {username: '@victor'})
+MATCH (davi:User {username: 'diogo30'})
+MATCH (p1:Post {id: 'post_v1'})
+MATCH (c_civil:Community {nome: 'Engenharia Civil'})
+MATCH (c_gamer:Community {nome: 'Gamers Hardcore'});
+
 MATCH p=()-[]->() RETURN p;
 
 MATCH p=()-[]->() RETURN p;
