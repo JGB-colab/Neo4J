@@ -4,6 +4,7 @@ def criar_relacionamento_cardinalidade(driver, origin_lbl, origin_val, dest_lbl,
     """
     Gera e executa a query Cypher correta baseada na regra de cardinalidade.
     card: 'N:N', '1:N' ou '1:1'
+    Retorna uma tupla (sucesso: bool, mensagem: str)
     """
     
     # Parâmetros de base
@@ -25,7 +26,7 @@ def criar_relacionamento_cardinalidade(driver, origin_lbl, origin_val, dest_lbl,
         CREATE (origem)-[:{rel_type}]->(destino)
         """
         
-    # 1:1 - Bloqueia se a origem já apontar para alguém OU se o destino já receber de alguém[cite: 2]
+    # 1:1 - Bloqueia se a origem já apontar para alguém OU se o destino já receber de alguém
     elif card == '1:1':
         query = query_base + f"""
         WHERE NOT EXISTS {{
@@ -37,7 +38,7 @@ def criar_relacionamento_cardinalidade(driver, origin_lbl, origin_val, dest_lbl,
         CREATE (origem)-[:{rel_type}]->(destino)
         """
     else:
-        return "Cardinalidade não suportada."
+        return False, "Cardinalidade não suportada."
 
     # Execução
     try:
@@ -45,17 +46,18 @@ def criar_relacionamento_cardinalidade(driver, origin_lbl, origin_val, dest_lbl,
             result = session.run(query, orig_val=origin_val, dest_val=dest_val)
             res_summary = result.consume()
             if res_summary.counters.relationships_created > 0:
-                print(f"✅ Relacionamento {rel_type} criado com sucesso ({card}).")
+                return True, f"✅ Relacionamento {rel_type} criado com sucesso ({card})."
             else:
-                print(f"⚠️ Relacionamento bloqueado pela regra de cardinalidade {card} ou nós não encontrados.")
+                return False, f"⚠️ Relacionamento bloqueado pela regra de cardinalidade {card} ou nós não encontrados."
     except Exception as e:
-        print(f"❌ Erro na execução: {e}")
+        return False, f"❌ Erro na execução: {e}"
 
 # Exemplo de uso
 if __name__ == "__main__":
     URI = "bolt://localhost:7687"
-    AUTH = ("neo4j", "sua_senha_aqui")
+    AUTH = ("neo4j", "123456789")
     
     with GraphDatabase.driver(URI, auth=AUTH) as driver:
         # Exemplo X4Good: LIKES (N:N)
-        criar_relacionamento_cardinalidade(driver, "User", "amir123", "Post", "post99", "LIKES", "N:N")
+        success, msg = criar_relacionamento_cardinalidade(driver, "User", "amir123", "Post", "post99", "LIKES", "N:N")
+        print(msg)
