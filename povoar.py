@@ -3,8 +3,11 @@ from neo4j import GraphDatabase
 from faker import Faker
 
 # Configuração do Neo4j (Ajuste a senha para a sua)
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "123456789")
+URI = "neo4j+ssc://cb84c387.databases.neo4j.io"
+AUTH = ("...", "...")
+with GraphDatabase.driver(URI, auth=AUTH) as driver:
+    driver.verify_connectivity()
+
 
 # Inicializando o Faker para português do Brasil
 fake = Faker('pt_BR')
