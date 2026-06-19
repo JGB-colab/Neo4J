@@ -57,11 +57,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# SIDEBAR - CONFIGURAÇÃO E NAVEGAÇÃO
-# ==========================================
-st.sidebar.markdown("<h2 style='text-align: center; color: #4C83FF;'>Trabalho Prático NEO4J </h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #4C83FF;'>Trabalho Prático NEO4J</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
+
+# Valores padrão de conexão (com suporte a Streamlit Secrets na nuvem)
+default_uri = "bolt://localhost:7687"
+default_user = "neo4j"
+default_pass = "123456789"
 
 try:
     if "NEO4J_URI" in st.secrets:
@@ -74,12 +76,12 @@ except Exception:
     pass
 
 st.sidebar.subheader("Conexão Neo4j")
-default_uri = "neo4j+ssc://cb84c387.databases.neo4j.io"
-default_user = "cb84c387"
-default_pass = "1xe1FMi49ZrfSzUvfOfzK_j8GKGqqFblHkvsQrQZVjc"
+neo4j_uri = st.sidebar.text_input("URI do Banco", value=default_uri, key="neo4j_uri")
+neo4j_user = st.sidebar.text_input("Usuário", value=default_user, key="neo4j_user")
+neo4j_password = st.sidebar.text_input("Senha", value=default_pass, type="password", key="neo4j_pwd")
 
 def get_driver():
-    return GraphDatabase.driver(default_uri, auth=(default_user, default_pass))
+    return GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
 
 def run_query(query, parameters=None):
     with get_driver() as driver:
@@ -110,7 +112,7 @@ st.sidebar.markdown("---")
 st.sidebar.caption("Trabalho Prático - Banco de Dados em Grafos - UFC 2026.1 - Desenvolvido por Amir e João Gabriel")
 
 # Título Principal do Dashboard
-st.markdown("<div class='main-title'>Banco de Dados em Grafos</div>", unsafe_allow_html=True)
+st.markdown("<div class='main-title'>X4Good Graph Dashboard</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Ecosystem Explorer, CRUD Manager, and Recommendation Engine</div>", unsafe_allow_html=True)
 
 # Cores de design para os diferentes nós do ecossistema
@@ -127,6 +129,7 @@ CORES_NOS = {
     "Media": "#F43F5E",         # Rose
     "Advertisement": "#14B8A6"  # Teal
 }
+
 
 # ==========================================
 # TELA 1: HOME (VISUALIZADOR DE GRAFOS)
@@ -167,17 +170,17 @@ if menu == "Home (Visão Geral)":
                     if len(m_title) > 20: m_title = m_title[:17] + "..."
                     
                     if n_id not in nodes_set:
-                        nodes.append(Node(id=n_id, label=f"({n_label}) {n_title}", size=22, color=CORES_NOS.get(n_label, "#A0AEC0")))
+                        nodes.append(Node(id=n_id, label=f"({n_label}) {n_title}", size=25, color=CORES_NOS.get(n_label, "#A0AEC0")))
                         nodes_set.add(n_id)
                     
                     if m_id not in nodes_set:
-                        nodes.append(Node(id=m_id, label=f"({m_label}) {m_title}", size=22, color=CORES_NOS.get(m_label, "#A0AEC0")))
+                        nodes.append(Node(id=m_id, label=f"({m_label}) {m_title}", size=25, color=CORES_NOS.get(m_label, "#A0AEC0")))
                         nodes_set.add(m_id)
                         
                     edges.append(Edge(source=n_id, target=m_id, label=type(r).__name__))
 
         if nodes:
-            config = Config(width=1000, height=600, directed=True, physics=True, hierarchical=False)
+            config = Config(width="100%", height=900, directed=True, physics=False, hierarchical=False)
             agraph(nodes=nodes, edges=edges, config=config)
         else:
             st.warning("O banco de dados parece vazio. Vá em 'Gerenciamento de Entidades' ou execute o script de povoamento.")
