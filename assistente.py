@@ -5,9 +5,9 @@ import uuid
 import datetime
 
 # Configuração da Página
-st.set_page_config(page_title="X4Good - Dashboard de Grafos", layout="wide", page_icon="🕸️")
+st.set_page_config(page_title="Dashboard de Grafos", layout="wide")
 
-# Estilização CSS customizada (Aesthetics & Typography)
+# Estilização CSS customizada
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap');
@@ -60,13 +60,8 @@ st.markdown("""
 # ==========================================
 # SIDEBAR - CONFIGURAÇÃO E NAVEGAÇÃO
 # ==========================================
-st.sidebar.markdown("<h2 style='text-align: center; color: #4C83FF;'>🕸️ X4Good System</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #4C83FF;'>Trabalho Prático NEO4J </h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
-
-# Valores padrão de conexão (com suporte a Streamlit Secrets na nuvem)
-default_uri = "bolt://localhost:7687"
-default_user = "neo4j"
-default_pass = "123456789"
 
 try:
     if "NEO4J_URI" in st.secrets:
@@ -78,7 +73,7 @@ try:
 except Exception:
     pass
 
-st.sidebar.subheader("🔌 Conexão Neo4j")
+st.sidebar.subheader("Conexão Neo4j")
 neo4j_uri = st.sidebar.text_input("URI do Banco", value=default_uri, key="neo4j_uri")
 neo4j_user = st.sidebar.text_input("Usuário", value=default_user, key="neo4j_user")
 neo4j_password = st.sidebar.text_input("Senha", value=default_pass, type="password", key="neo4j_pwd")
@@ -95,12 +90,12 @@ def run_query(query, parameters=None):
 try:
     with get_driver() as d:
         d.verify_connectivity()
-    st.sidebar.success("🟢 Conectado ao Neo4j!")
+    st.sidebar.success("Conectado ao Neo4j!")
 except Exception as e:
-    st.sidebar.error(f"🔴 Erro de Conexão: {e}")
+    st.sidebar.error(f"Erro de Conexão: {e}")
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🎯 Navegação")
+st.sidebar.subheader("Navegação")
 menu = st.sidebar.radio(
     "Selecione uma tela:",
     [
@@ -112,10 +107,10 @@ menu = st.sidebar.radio(
     ]
 )
 st.sidebar.markdown("---")
-st.sidebar.caption("Trabalho Prático - Banco de Dados em Grafos (Neo4j)")
+st.sidebar.caption("Trabalho Prático - Banco de Dados em Grafos - UFC 2026.1 - Desenvolvido por Amir e João Gabriel")
 
 # Título Principal do Dashboard
-st.markdown("<div class='main-title'>X4Good Graph Dashboard</div>", unsafe_allow_html=True)
+st.markdown("<div class='main-title'>Banco de Dados em Grafos</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Ecosystem Explorer, CRUD Manager, and Recommendation Engine</div>", unsafe_allow_html=True)
 
 # Cores de design para os diferentes nós do ecossistema
@@ -137,8 +132,8 @@ CORES_NOS = {
 # TELA 1: HOME (VISUALIZADOR DE GRAFOS)
 # ==========================================
 if menu == "Home (Visão Geral)":
-    st.header("🌐 O Ecossistema em Rede")
-    st.markdown("Visualização interativa em tempo real de todas as entidades e interações do X4Good.")
+    st.header("O Ecossistema em Rede")
+    st.markdown("Visualização interativa em tempo real de todas as entidades e interações.")
     
     # Exibir a legenda dos nós com cores bonitas
     st.markdown("<div class='glass-card'><strong>Legenda dos Nós:</strong><br>" + 
@@ -150,7 +145,7 @@ if menu == "Home (Visão Geral)":
         with get_driver() as driver:
             with driver.session() as session:
                 # Busca nós e relacionamentos para plotar
-                resultado = session.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 80")
+                resultado = session.run("MATCH (n)-[r]->(m) RETURN n, r, m")
                 
                 nodes_set = set()
                 nodes = []
@@ -193,7 +188,7 @@ if menu == "Home (Visão Geral)":
 # TELA 2: GERENCIAMENTO DE ENTIDADES (CRUD COMPLETO)
 # ==========================================
 elif menu == "Gerenciamento de Entidades (CRUD)":
-    st.header("🗂️ Central de Cadastro de Entidades")
+    st.header("Central de Cadastro de Entidades")
     st.markdown("Crie, edite ou remova qualquer tipo de nó do sistema.")
     
     lista_entidades = list(CORES_NOS.keys())
@@ -218,7 +213,7 @@ elif menu == "Gerenciamento de Entidades (CRUD)":
             elif tipo_entidade == "Comment":
                 dados_novos["texto"] = st.text_area("Texto do Comentário")
                 lista_users = [u["username"] for u in run_query("MATCH (u:User) RETURN u.username AS username ORDER BY username")]
-                lista_posts = [p["id"] for p in run_query("MATCH (p:Post) RETURN p.id AS id LIMIT 30")]
+                lista_posts = [p["id"] for p in run_query("MATCH (p:Post) RETURN p.id AS id")]
                 dados_novos["_creator"] = st.selectbox("Comentador (User)", lista_users) if lista_users else None
                 dados_novos["_post_target"] = st.selectbox("Destino (ID do Post)", lista_posts) if lista_posts else None
             elif tipo_entidade == "Community":
@@ -392,7 +387,7 @@ elif menu == "Gerenciamento de Entidades (CRUD)":
 # TELA 3: CENTRAL DE RELACIONAMENTOS (INTEGRANDO CARDINALIDADE)
 # ==========================================
 elif menu == "Central de Relacionamentos":
-    st.header("🔗 Gestão de Conexões e Relacionamentos")
+    st.header("Gestão de Conexões e Relacionamentos")
     st.markdown("Pesquise, crie, renomeie ou delete relacionamentos usando regras estruturadas de cardinalidade.")
 
     lista_relacionamentos = [
@@ -546,7 +541,7 @@ elif menu == "Central de Relacionamentos":
 # TELA 4: AÇÕES & SIMULAÇÃO DE USUÁRIO (NOVA!)
 # ==========================================
 elif menu == "Ações & Simulação de Usuário":
-    st.header("🎭 Simulação de Interação Social")
+    st.header("Simulação de Interação Social")
     st.markdown("Entre na pele de um usuário da rede e interaja de forma visual e realista.")
     
     lista_users = run_query("MATCH (u:User) RETURN u.nome AS nome, u.username AS username ORDER BY nome")
@@ -602,7 +597,7 @@ elif menu == "Ações & Simulação de Usuário":
                         
             # 2. Comentar
             elif opcao_acao == "Comentar em uma publicação":
-                todos_posts = run_query("MATCH (u:User)-[:POSTED]->(p:Post) RETURN p.id AS id, p.content AS content, u.username AS autor LIMIT 30")
+                todos_posts = run_query("MATCH (u:User)-[:POSTED]->(p:Post) RETURN p.id AS id, p.content AS content, u.username AS autor")
                 if todos_posts:
                     opcoes_posts = {f"@{p['autor']}: {p['content'][:40]}...": p['id'] for p in todos_posts}
                     post_alvo = st.selectbox("Selecione o post:", list(opcoes_posts.keys()))
@@ -626,7 +621,7 @@ elif menu == "Ações & Simulação de Usuário":
                     
             # 3. Likes, Shares, Views
             elif opcao_acao == "Curtir / Compartilhar / Visualizar":
-                todos_posts = run_query("MATCH (u:User)-[:POSTED]->(p:Post) RETURN p.id AS id, p.content AS content, u.username AS autor LIMIT 30")
+                todos_posts = run_query("MATCH (u:User)-[:POSTED]->(p:Post) RETURN p.id AS id, p.content AS content, u.username AS autor")
                 if todos_posts:
                     opcoes_posts = {f"@{p['autor']}: {p['content'][:40]}...": p['id'] for p in todos_posts}
                     post_alvo = st.selectbox("Selecione o post:", list(opcoes_posts.keys()))
@@ -743,7 +738,6 @@ elif menu == "Ações & Simulação de Usuário":
                 MATCH (u:User)-[:POSTED]->(p:Post)
                 OPTIONAL MATCH (p)-[:HAS_TOPIC]->(t:Topic)
                 RETURN u.nome AS autor, u.username AS username, p.content AS texto, COALESCE(t.nome, 'Geral') AS topico
-                LIMIT 5
                 """
             )
             for p in posts_recentes:
@@ -761,7 +755,7 @@ elif menu == "Ações & Simulação de Usuário":
 # TELA 5: MOTOR DE RECOMENDAÇÃO (MELHORADO)
 # ==========================================
 elif menu == "Motor de Recomendação":
-    st.header("🧠 Inteligência de Grafos & Recomendações")
+    st.header("Inteligência de Grafos & Recomendações")
     st.markdown("Consulte sugestões personalizadas de relacionamentos, conteúdos e propagandas.")
     
     st.subheader("Usuários Ativos no Banco:")
@@ -828,10 +822,9 @@ elif menu == "Motor de Recomendação":
             query_ads = """
             MATCH (u:User {username: $username})-[:LIKES]->(p:Post)-[:HAS_TOPIC]->(t:Topic)
             WITH u, t, count(p) AS curtidas_topico
-            ORDER BY curtidas_topico DESC LIMIT 1
+            ORDER BY curtidas_topico DESC
             MATCH (ad:Advertisement)
             RETURN ad.titulo AS CampanhaAnuncio, ad.anunciante AS Anunciante, t.nome AS BaseadoNoTopico
-            LIMIT 3
             """
             if st.button("Gerar Anúncios Recomendados"):
                 registos = run_query(query_ads, {"username": usuario_alvo})

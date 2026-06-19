@@ -2,9 +2,9 @@ import random
 from neo4j import GraphDatabase
 from faker import Faker
 
-# Configuração do Neo4j (Ajuste a senha para a sua)
+# Configuração do Neo4j (Usando o usuário e senha exatos do teste.py)
 URI = "neo4j+ssc://cb84c387.databases.neo4j.io"
-AUTH = ("...", "...")
+AUTH = ("cb84c387", "1xe1FMi49ZrfSzUvfOfzK_j8GKGqqFblHkvsQrQZVjc")
 with GraphDatabase.driver(URI, auth=AUTH) as driver:
     driver.verify_connectivity()
 
@@ -13,7 +13,7 @@ with GraphDatabase.driver(URI, auth=AUTH) as driver:
 fake = Faker('pt_BR')
 
 def povoar_banco(driver, num_users=12, num_posts_max=3):
-    print("Iniciando o povoamento da rede X4Good...")
+    print("Iniciando o povoamento do banco de dados Neo4j")
     
     with driver.session() as session:
         # Limpa o banco antes de popular
@@ -41,6 +41,7 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
         # 3. CRIANDO LOCALIZACOES (Location)
         print("[4/11] Criando Localizacoes...")
         locations = [
+            ("loc_ce", "Fortaleza", "CE"),
             ("loc_sp", "Sao Paulo", "SP"),
             ("loc_rj", "Rio de Janeiro", "RJ"),
             ("loc_mg", "Belo Horizonte", "MG"),
@@ -82,11 +83,11 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
                 id=evt_id, nome=name, data=date, plataforma=platform
             )
 
-        # Conectar Eventos as Comunidades correspondentes (HOSTS)
-        session.run("MATCH (c:Community {id: 'c_civil'}), (e:Event {id: 'evt_tce'}) MERGE (c)-[:HOSTS {timestamp: datetime()}]->(e)")
-        session.run("MATCH (c:Community {id: 'c_gamer'}), (e:Event {id: 'evt_elden'}) MERGE (c)-[:HOSTS {timestamp: datetime()}]->(e)")
-        session.run("MATCH (c:Community {id: 'c_devs'}), (e:Event {id: 'evt_hack'}) MERGE (c)-[:HOSTS {timestamp: datetime()}]->(e)")
-        session.run("MATCH (c:Community {id: 'c_invest'}), (e:Event {id: 'evt_webinar'}) MERGE (c)-[:HOSTS {timestamp: datetime()}]->(e)")
+        # Conectar Eventos as Comunidades correspondentes (HOSTS) usando ON CREATE SET
+        session.run("MATCH (c:Community {id: 'c_civil'}), (e:Event {id: 'evt_tce'}) MERGE (c)-[r:HOSTS]->(e) ON CREATE SET r.timestamp = datetime()")
+        session.run("MATCH (c:Community {id: 'c_gamer'}), (e:Event {id: 'evt_elden'}) MERGE (c)-[r:HOSTS]->(e) ON CREATE SET r.timestamp = datetime()")
+        session.run("MATCH (c:Community {id: 'c_devs'}), (e:Event {id: 'evt_hack'}) MERGE (c)-[r:HOSTS]->(e) ON CREATE SET r.timestamp = datetime()")
+        session.run("MATCH (c:Community {id: 'c_invest'}), (e:Event {id: 'evt_webinar'}) MERGE (c)-[r:HOSTS]->(e) ON CREATE SET r.timestamp = datetime()")
 
         # 7. CRIANDO ANUNCIOS (Advertisement)
         print("[8/11] Criando Anuncios...")
@@ -114,46 +115,49 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
             users_ids.append(user_id)
             user_usernames.append(username)
             
-            # Relacionamento: LOCATED_IN (1:N - Usuario esta em uma localizacao)
+            # Relacionamento: LOCATED_IN
             loc = random.choice(locations)
             session.run(
                 """
                 MATCH (u:User {id: $uid}), (l:Location {id: $lid})
-                MERGE (u)-[:LOCATED_IN {timestamp: datetime()}]->(l)
+                MERGE (u)-[r:LOCATED_IN]->(l)
+                ON CREATE SET r.timestamp = datetime()
                 """,
                 uid=user_id, lid=loc[0]
             )
 
-            # Relacionamento: USES_DEVICE (N:N - Usuario usa um ou mais dispositivos)
+            # Relacionamento: USES_DEVICE
             devs = random.sample(devices, random.randint(1, 2))
             for dev in devs:
                 session.run(
                     """
                     MATCH (u:User {id: $uid}), (d:Device {id: $did})
-                    MERGE (u)-[:USES_DEVICE {timestamp: datetime(), frequencia: 'diaria'}]->(d)
+                    MERGE (u)-[r:USES_DEVICE]->(d)
+                    ON CREATE SET r.timestamp = datetime(), r.frequencia = 'diaria'
                     """,
                     uid=user_id, did=dev[0]
                 )
 
-            # Relacionamento: MEMBER_OF (N:N - Usuario entra em 1 a 3 comunidades)
+            # Relacionamento: MEMBER_OF
             comm_selection = random.sample(communities, random.randint(1, 3))
             for comm in comm_selection:
                 session.run(
                     """
                     MATCH (u:User {id: $uid}), (c:Community {id: $cid})
-                    MERGE (u)-[:MEMBER_OF {timestamp: datetime(), role: 'member'}]->(c)
+                    MERGE (u)-[r:MEMBER_OF]->(c)
+                    ON CREATE SET r.timestamp = datetime(), r.role = 'member'
                     """,
                     uid=user_id, cid=comm[0]
                 )
 
-            # Relacionamento: ATTENDS (N:N - Usuario participa de eventos vinculados as suas comunidades)
+            # Relacionamento: ATTENDS
             for comm in comm_selection:
-                # Se a comunidade tiver evento, ha 50% de chance de participar
                 if random.choice([True, False]):
                     session.run(
                         """
                         MATCH (u:User {id: $uid}), (c:Community {id: $cid})-[:HOSTS]->(e:Event)
-                        MERGE (u)-[:ATTENDS {timestamp: datetime(), status: 'confirmado'}]->(e)
+                        MERGE (u)-[r:ATTENDS]->(e)
+                        ON CREATE SET r.timestamp = datetime(), r.status = 'confirmado'
                         """,
                         uid=user_id, cid=comm[0]
                     )
@@ -162,12 +166,10 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
         print("[10/11] Gerando posts e conectando a Topicos, Hashtags e Midias...")
         posts_ids = []
         for uid in users_ids:
-            # Cada usuario faz de 0 a max posts
             for _ in range(random.randint(1, num_posts_max)):
                 post_id = fake.uuid4()
                 content = fake.sentence(nb_words=10)
                 
-                # Cria post e conecta via POSTED
                 session.run(
                     """
                     MATCH (u:User {id: $uid})
@@ -178,7 +180,7 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
                 )
                 posts_ids.append(post_id)
 
-                # Relacionamento: HAS_TOPIC (Cada post tem um topico aleatorio)
+                # Relacionamento: HAS_TOPIC
                 top = random.choice(topics).lower()
                 session.run(
                     """
@@ -188,24 +190,24 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
                     pid=post_id, tid=top
                 )
 
-                # Relacionamento: TAGGED_WITH (Post tem hashtags aleatorias)
+                # Relacionamento: TAGGED_WITH
                 post_tags = random.sample(hashtags, random.randint(0, 2))
                 for t in post_tags:
                     session.run(
                         """
                         MATCH (p:Post {id: $pid}), (h:Hashtag {id: $hid})
-                        MERGE (p)-[:TAGGED_WITH {timestamp: datetime()}]->(h)
+                        MERGE (p)-[r:TAGGED_WITH]->(h)
+                        ON CREATE SET r.timestamp = datetime()
                         """,
                         pid=post_id, hid=t.lower()
                     )
 
-                # Criar Media associada ao post (50% de chance)
+                # Criar Media associada ao post
                 if random.choice([True, False]):
                     media_id = fake.uuid4()
                     m_type = random.choice(["imagem", "video"])
                     m_url = f"https://media.x4good.com/files/{media_id}.{'png' if m_type == 'imagem' else 'mp4'}"
                     
-                    # Usuario posta a midia e a midia e associada ao post
                     session.run(
                         """
                         MATCH (u:User {id: $uid}), (p:Post {id: $pid})
@@ -219,13 +221,11 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
         # 10. CRIANDO COMENTARIOS (Comment)
         print("[10.5/11] Gerando comentarios...")
         for pid in posts_ids:
-            # Cada post recebe de 0 a 2 comentarios de usuarios aleatorios
             for _ in range(random.randint(0, 2)):
                 comentador_id = random.choice(users_ids)
                 comment_id = fake.uuid4()
                 texto = fake.sentence(nb_words=8)
                 
-                # Usuario posta o comentario e comentario esta associado ao post via COMMENTS_ON
                 session.run(
                     """
                     MATCH (u:User {id: $uid}), (p:Post {id: $pid})
@@ -239,29 +239,35 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
         # 11. CRIANDO INTERACOES DA REDE SOCIAL
         print("[11/11] Construindo conexoes sociais...")
         for uid in users_ids:
-            # FOLLOWS: Segue 1 a 4 pessoas aleatorias
+            # FOLLOWS
             seguindo = random.sample(users_ids, random.randint(1, min(4, len(users_ids))))
             for seg_id in seguindo:
                 if uid != seg_id:
                     session.run(
-                        "MATCH (u1:User {id: $uid}), (u2:User {id: $seg_id}) MERGE (u1)-[:FOLLOWS {timestamp: datetime()}]->(u2)",
+                        """
+                        MATCH (u1:User {id: $uid}), (u2:User {id: $seg_id})
+                        MERGE (u1)-[r:FOLLOWS]->(u2)
+                        ON CREATE SET r.timestamp = datetime()
+                        """,
                         uid=uid, seg_id=seg_id
                     )
 
-            # FRIEND_OF: Amizade com 1 a 2 pessoas (mutuo)
+            # FRIEND_OF
             amigos = random.sample(users_ids, random.randint(1, min(2, len(users_ids))))
             for amigo_id in amigos:
                 if uid != amigo_id:
                     session.run(
                         """
                         MATCH (u1:User {id: $uid}), (u2:User {id: $amigo_id})
-                        MERGE (u1)-[:FRIEND_OF {timestamp: datetime()}]->(u2)
-                        MERGE (u2)-[:FRIEND_OF {timestamp: datetime()}]->(u1)
+                        MERGE (u1)-[r1:FRIEND_OF]->(u2)
+                        ON CREATE SET r1.timestamp = datetime()
+                        MERGE (u2)-[r2:FRIEND_OF]->(u1)
+                        ON CREATE SET r2.timestamp = datetime()
                         """,
                         uid=uid, amigo_id=amigo_id
                     )
 
-            # LIKES: Curte 1 a 5 posts aleatorios
+            # LIKES (Este já estava correto no código original)
             if posts_ids:
                 curtidos = random.sample(posts_ids, random.randint(1, min(5, len(posts_ids))))
                 for pid in curtidos:
@@ -274,58 +280,66 @@ def povoar_banco(driver, num_users=12, num_posts_max=3):
                         uid=uid, pid=pid, reaction=random.choice(["love", "like", "haha", "wow"])
                     )
 
-            # SHARES: Compartilha 0 a 2 posts aleatorios
+            # SHARES
             if posts_ids:
                 compartilhados = random.sample(posts_ids, random.randint(0, min(2, len(posts_ids))))
                 for pid in compartilhados:
                     session.run(
                         """
                         MATCH (u:User {id: $uid}), (p:Post {id: $pid})
-                        MERGE (u)-[:SHARES {timestamp: datetime()}]->(p)
+                        MERGE (u)-[r:SHARES]->(p)
+                        ON CREATE SET r.timestamp = datetime()
                         """,
                         uid=uid, pid=pid
                     )
 
-            # VIEWED: Visualiza 1 a 6 posts aleatorios
+            # VIEWED
             if posts_ids:
                 visualizados = random.sample(posts_ids, random.randint(1, min(6, len(posts_ids))))
                 for pid in visualizados:
                     session.run(
                         """
                         MATCH (u:User {id: $uid}), (p:Post {id: $pid})
-                        MERGE (u)-[:VIEWED {timestamp: datetime(), cliques: 3}]->(p)
+                        MERGE (u)-[r:VIEWED]->(p)
+                        ON CREATE SET r.timestamp = datetime(), r.cliques = 3
                         """,
                         uid=uid, pid=pid
                     )
 
-            # TAGGED_IN: Marcado em posts (15% de chance)
+            # TAGGED_IN
             if posts_ids and random.random() < 0.15:
                 pid = random.choice(posts_ids)
                 session.run(
                     """
                     MATCH (u:User {id: $uid}), (p:Post {id: $pid})
-                    MERGE (u)-[:TAGGED_IN {timestamp: datetime()}]->(p)
+                    MERGE (u)-[r:TAGGED_IN]->(p)
+                    ON CREATE SET r.timestamp = datetime()
                     """,
                     uid=uid, pid=pid
                 )
 
-            # BLOCKED / MUTED (15% de chance de bloquear ou silenciar alguem aleatorio)
+            # BLOCKED / MUTED
             if random.random() < 0.15:
                 alvo = random.choice(users_ids)
                 if uid != alvo:
                     rel_type = random.choice(["BLOCKED", "MUTED"])
                     session.run(
-                        f"MATCH (u1:User {{id: $uid}}), (u2:User {{id: $alvo}}) MERGE (u1)-[:{rel_type} {{timestamp: datetime()}}]->(u2)",
+                        f"""
+                        MATCH (u1:User {{id: $uid}}), (u2:User {{id: $alvo}})
+                        MERGE (u1)-[r:{rel_type}]->(u2)
+                        ON CREATE SET r.timestamp = datetime()
+                        """,
                         uid=uid, alvo=alvo
                     )
 
-            # SIMILAR_TO (Simular relacoes de similaridade calculadas pelo sistema)
+            # SIMILAR_TO
             alvo_sim = random.choice(users_ids)
             if uid != alvo_sim:
                 session.run(
                     """
                     MATCH (u1:User {id: $uid}), (u2:User {id: $alvo})
-                    MERGE (u1)-[:SIMILAR_TO {score: 0.85, timestamp: datetime()}]->(u2)
+                    MERGE (u1)-[r:SIMILAR_TO]->(u2)
+                    ON CREATE SET r.score = 0.85, r.timestamp = datetime()
                     """,
                     uid=uid, alvo=alvo_sim
                 )

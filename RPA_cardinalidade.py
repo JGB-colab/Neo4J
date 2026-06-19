@@ -45,19 +45,14 @@ def criar_relacionamento_cardinalidade(driver, origin_lbl, origin_val, dest_lbl,
         with driver.session() as session:
             result = session.run(query, orig_val=origin_val, dest_val=dest_val)
             res_summary = result.consume()
+            
             if res_summary.counters.relationships_created > 0:
-                return True, f"✅ Relacionamento {rel_type} criado com sucesso ({card})."
+                return True, f"Relacionamento {rel_type} criado com sucesso ({card})."
             else:
-                return False, f"⚠️ Relacionamento bloqueado pela regra de cardinalidade {card} ou nós não encontrados."
+                # Tratamento inteligente de mensagens de erro
+                if card == 'N:N':
+                    return False, f"Nenhuma nova relação criada. A conexão '{rel_type}' já existe ou os nós não foram encontrados."
+                else:
+                    return False, f"BLOQUEADO: A regra de cardinalidade {card} impediu a criação (limite excedido) ou os nós não existem."
     except Exception as e:
         return False, f"❌ Erro na execução: {e}"
-
-# Exemplo de uso
-if __name__ == "__main__":
-    URI = "bolt://localhost:7687"
-    AUTH = ("neo4j", "123456789")
-    
-    with GraphDatabase.driver(URI, auth=AUTH) as driver:
-        # Exemplo X4Good: LIKES (N:N)
-        success, msg = criar_relacionamento_cardinalidade(driver, "User", "amir123", "Post", "post99", "LIKES", "N:N")
-        print(msg)
